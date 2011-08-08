@@ -16,12 +16,14 @@ class Neo4JServer
     constructor: (@config) ->
         iptRule = iptables.redirectRule config.port, config.proxyPort
         running = false
-        starting = false
+        startingOrStopping = false
         config = @config
 
-        log = (message) -> console.log config.instance + " " + message
-        
-        setRunning = (r) ->
+        log = config.logger
+
+        @running = -> running
+
+        @setRunning = setRunning = (r) ->
             running = r
             if (running)
                 log "remove firewall rule"
@@ -30,71 +32,65 @@ class Neo4JServer
                 log "add firewall rule"
                 iptRule.addRule()
 
-        updateStatus = @updateStatus = ->
-            exec log, config.statusCmd, (error, stdout) ->
-                setRunning(stdout.indexOf("not running") == -1)
-                checkIdle()
+        updateStatus = @updateStatus = ( callback )->
+            if callback is undefined
+                callback = (isRunning) -> setRunning isRunning if running != isRunning
 
-        checkIdle = @checkIdle = ->
-            if (running)
-                request = http.request
-                    port: config.port, method: 'GET', path: '/admin/statistic/', host: '127.0.0.1',
-                    headers:
-                        Host:'localhost', Accept:"application/json"
-                        Authorization: 'Basic ' + new Buffer(config.adminCredentials).toString('base64'),
-                    (response)->
-                        now = new Date().getTime() / 1000
-                        response.setEncoding 'utf8'
-                        data = ""
-                        response.on 'data', (chunk) -> data += chunk
-                        response.on 'end', ->
-                            requestCount = 0
-                            period = 0
-                            for i in JSON.parse(data)
-                                if (i['timeStamp'] > (now - 7200))
-                                    requestCount += i['requests']
-                                    period += i['period']
+            log "check status"
+            request = http.request
+                port: config.port, method: 'GET', path: '/admin/statistic/', host: '127.0.0.1'
+                headers:
+                    Host:'localhost', Accept:"application/json"
+                    Authorization: 'Basic ' + new Buffer(config.adminCredentials).toString('base64')
+                (response)->
+                    now = new Date().getTime() / 1000
+                    response.setEncoding 'utf8'
+                    data = ""
+                    response.on 'data', (chunk) -> data += chunk
+                    response.on 'end', ->
+                        callback true
+                        requestCount = 0
+                        duration = 0
+                        for sample in JSON.parse(data)
+                            if (sample.timeStamp > (now - 86400))
+                                requestCount += sample.requests
+                                duration += sample.period
 
-                            log "request-count for "+ config.port + " == " + requestCount + "/" + period
+                        userRequests = requestCount - 10 - Math.round duration / 30
 
-                request.on 'error', (e) ->
-                    log "problem with request: " + e.message
-                    setRunning false
+                        log "requests: " + requestCount + " in " + duration + "s --> " + userRequests
+                        if userRequests <= 0  && duration > 82800  ## 23 hours
+                            log "will shutdown"
+                            stopServer()
 
-                request.end "\n"
+            request.on 'error', (e) -> callback false
+            request.end "\n"
 
         startServer = @startServer = ->
-            log "try to start server"
-            if (starting || running)
-                log "is running(=" + running + ") or starting(=" + starting + ")"
-                return
+            return log "try to start server: is allready starting/stopping" if startingOrStopping
+            return log "try to start server: is running" if running
 
-            starting = true
+            startingOrStopping = true
             log "starting"
             exec log, config.startCmd, (error, stdout, stderr) ->
-                starting = false
-                if (error == null) then setRunning true
-                else if (stdout.indexOf("already running with pid") != -1) then updateStatus()
+                updateStatus (isRunning) ->
+                    startingOrStopping = false
+                    setRunning isRunning
 
-        @stopServer = ->
-            log "try to stop server"
-            if (!running && !starting)
-                log "not running(=" + running + ") or starting(=" + starting + ")"
-                return
-
-            starting = true
+        stopServer = @stopServer = ->
+            return log "try to stop server: is allready starting/stopping" if startingOrStopping
+            return log "try to stop server: not running" unless running
+            startingOrStopping = true
             log "stopping"
-            exec log, config.stopCmd, (error, stdout, stderr) ->
-               starting = false
+            exec log, config.stopCmd, ->
+               startingOrStopping = false
                setRunning false
 
         waitForServer = @waitForServer = (msg, callback) ->
-            if (running)
-                callback()
-            else
-                log "wait " + msg
-                if (!starting) then startServer()
-                setTimeout waitForServer, 2000, msg, callback
+            return callback() if running
+            log "waitForServer " + msg
+            startServer() unless startingOrStopping
+            setTimeout waitForServer, 2000, msg, callback
 
 
 exports.create = (config) -> new Neo4JServer(config)

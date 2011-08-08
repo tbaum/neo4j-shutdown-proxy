@@ -3,7 +3,7 @@ net = require 'net'
 
 class Proxy
     constructor: (neo4j, config) ->
-        log = (message) -> console.log config.instance + " " + message
+        log = config.logger
 
         server = net.createServer (proxySocket) ->
             info = proxySocket.remoteAddress + ":" + proxySocket.remotePort
@@ -21,8 +21,10 @@ class Proxy
         log "start " + config.proxyPort + " -> " + config.port
         list = server.listen config.proxyPort
 
-        updater = setInterval neo4j.checkIdle, 30000
-        neo4j.updateStatus()
+        updater = setInterval neo4j.updateStatus, 30000
+        neo4j.updateStatus (isRunning) -> neo4j.setRunning isRunning
+
+        @running = -> neo4j.running()
 
         @stop = ->
             clearInterval updater
