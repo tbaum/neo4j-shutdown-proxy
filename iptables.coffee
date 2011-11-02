@@ -4,7 +4,7 @@ exec = require("child_process").exec
 class IptablesRule
     constructor: (rule) ->
         isPresent = (condition, callback) ->
-            exec "iptables -tnat -S PREROUTING", (x, o) -> callback() if (o.indexOf(rule) != -1) is condition
+            exec "iptables -tnat -S PREROUTING", (exitCode, out) -> callback() if (out.indexOf(rule) != -1) is condition
 
         @addRule = -> isPresent false, -> exec "iptables -tnat -A PREROUTING " + rule
 
