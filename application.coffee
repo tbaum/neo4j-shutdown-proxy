@@ -35,9 +35,9 @@ class ServerManager
             try
                 config = JSON.parse(fs.readFileSync "config.json")
                 auth = config['auth']
-                for i in config['proxies']
-                    try bringUp i catch e
-                        console.log "error during startup for "+ i + " " + e
+                for instance in config['proxies']
+                    try bringUp instance catch e
+                        console.log "error during startup for "+ instance + " " + e
             catch error
                 console.log error
 
@@ -45,7 +45,10 @@ class ServerManager
             connect(
                 connect.basicAuth (user, pass) -> auth.user == user && auth.pass == pass
                 connect.router (app) ->
-                    app.get '/', (request, response) -> response.end JSON.stringify(key for key of proxies)
+                    app.get '/', (request, response) ->
+                        res = {}
+                        res[instance] = proxy.running() for instance, proxy of proxies
+                        response.end JSON.stringify(res)
 
                     app.post '/:id', (request, response) ->
                         id = request.params.id
@@ -67,3 +70,5 @@ class ServerManager
 serverManager = new ServerManager()
 serverManager.loadConfig()
 serverManager.start()
+
+console.log "neo4j-cloud keeper started"
