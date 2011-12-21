@@ -13,12 +13,12 @@ exec = (log, cmd, callback) ->
 
 
 class Neo4JServer
-    constructor: (@config) ->
+    constructor: (@config, @serverName) ->
         iptRule = iptables.redirectRule config.port, config.proxyPort
         running = false
         startingOrStopping = false
         config = @config
-
+        serverName = @serverName
         log = config.logger
 
         @running = -> running
@@ -73,7 +73,12 @@ class Neo4JServer
             startingOrStopping = true
             log "starting"
             exec log, config.startCmd, (error, stdout, stderr) ->
+                if error && !config.failedMail
+                    config.failedMail = 1
+                    subject = '[ERR-heroku] keeper coud not start '+config.startCmd+' on `hostname -f`'
+                    exec log, '( date ; echo \''+stdout+'\' ; echo "-----" ; tail -n30 /mnt/'+config.instance+'/data/log/console.log ) | mail heroku@neo4j.org -a "From: root@'+serverName+'" -s "'+subject+'"'
                 updateStatus (isRunning) ->
+                    config.failedMail = 0 if isRunning
                     startingOrStopping = false
                     setRunning isRunning
 
@@ -93,4 +98,4 @@ class Neo4JServer
             setTimeout waitForServer, 2000, msg, callback
 
 
-exports.create = (config) -> new Neo4JServer(config)
+exports.create = (config,serverName) -> new Neo4JServer(config,serverName)

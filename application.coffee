@@ -19,21 +19,24 @@ class ServerManager
     constructor: ->
         proxies = {}
         auth = { user: "admin", pass: "admin"}
+        serverName = 'undefinded'
 
         bringUp = (id) ->
             config = neo4jconfig.parse id
-            neo4j = neo4jserver.create config
+            neo4j = neo4jserver.create config, serverName
             proxies[id] = proxy.buildFor neo4j, config
 
         storeConfig = ->
             config =
                 auth : auth
+                serverName : serverName
                 proxies: (key for key of proxies)
             fs.writeFileSync "config.json", JSON.stringify(config)
 
         @loadConfig = ->
             try
                 config = JSON.parse(fs.readFileSync "config.json")
+                serverName = config['serverName']
                 auth = config['auth']
                 for instance in config['proxies']
                     try bringUp instance catch e
@@ -51,6 +54,7 @@ class ServerManager
                         response.end JSON.stringify(res)
 
                     app.post '/:id', (request, response) ->
+                        console.log "adding"
                         id = request.params.id
                         if (proxies[id]) then throw new Error "instance " + id + " is already registered"
                         bringUp id
@@ -58,6 +62,7 @@ class ServerManager
                         response.end "add "+request.params.id
 
                     app.delete '/:id', (request, response) ->
+                        console.log "deleting"
                         id = request.params.id
                         if (!proxies[id]) then throw new Error "instance " + id + " is not registered"
                         proxies[id].stop()
