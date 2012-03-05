@@ -28,7 +28,7 @@ class Proxy
 
         @stop = ->
             clearInterval updater
-            neo4j.startServer()
+            neo4j.stopServer()
             server.close()
 
 exports.buildFor = (neo4j, config) -> new Proxy neo4j, config
