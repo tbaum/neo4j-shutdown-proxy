@@ -51,10 +51,13 @@ class Neo4JServer
                         callback true
                         requestCount = 0
                         duration = 0
-                        for sample in JSON.parse(data)
+                        try 
+                         for sample in JSON.parse(data)
                             if (sample.timeStamp > (now - 86400))
                                 requestCount += sample.requests
                                 duration += sample.period
+                        catch e 
+                          console.log e
 
                         userRequests = requestCount - 10 - Math.round duration / 30
 
@@ -76,7 +79,7 @@ class Neo4JServer
                 if error && !config.failedMail
                     config.failedMail = 1
                     subject = '[ERR-heroku] keeper coud not start '+config.startCmd+' on `hostname -f`'
-                    exec log, '( date ; echo \''+stdout+'\' ; echo "-----" ; tail -n30 /mnt/'+config.instance+'/data/log/console.log ) | mail heroku@neo4j.org -a "From: root@'+serverName+'" -s "'+subject+'"'
+                    exec log, '( date ; echo \''+stdout+'\' ; echo "'+config.port+' -----" ; tail -n30 /mnt/'+config.instance+'/data/log/console.log ) | mail heroku@neo4j.org -a "From: root@'+serverName+'" -s "'+subject+'"'
                 updateStatus (isRunning) ->
                     config.failedMail = 0 if isRunning
                     startingOrStopping = false
