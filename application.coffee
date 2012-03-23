@@ -1,4 +1,3 @@
-
 # $ requires npm install connect into
 # require.paths [ '$HOME/.node_modules', '$HOME/.node_libraries', '/usr/lib/node' ]
 
@@ -27,10 +26,7 @@ class ServerManager
             proxies[id] = proxy.buildFor neo4j, config
 
         storeConfig = ->
-            config =
-                auth : auth
-                serverName : serverName
-                proxies: (key for key of proxies)
+            config =  auth: auth, serverName: serverName, proxies: (key for key of proxies)
             fs.writeFileSync "config.json", JSON.stringify(config)
 
         @loadConfig = ->
@@ -39,8 +35,7 @@ class ServerManager
                 serverName = config['serverName']
                 auth = config['auth']
                 for instance in config['proxies']
-                    try bringUp instance catch e
-                        console.log "error during startup for "+ instance + " " + e
+                    bringUp instance
             catch error
                 console.log error
 
@@ -53,13 +48,27 @@ class ServerManager
                         res[instance] = proxy.running() for instance, proxy of proxies
                         response.end JSON.stringify(res)
 
+                    app.get '/start/:id', (request, response) ->
+                        id = request.params.id
+                        console.log "starting " + id
+                        bringUp id
+                        storeConfig()
+                        response.end "start " + request.params.id
+
+                    app.get '/stop/:id', (request, response) ->
+                        console.log "adding"
+                        id = request.params.id
+                        bringUp id
+                        storeConfig()
+                        response.end "start " + request.params.id
+
                     app.post '/:id', (request, response) ->
                         console.log "adding"
                         id = request.params.id
                         if (proxies[id]) then throw new Error "instance " + id + " is already registered"
                         bringUp id
                         storeConfig()
-                        response.end "add "+request.params.id
+                        response.end "add " + request.params.id
 
                     app.delete '/:id', (request, response) ->
                         console.log "deleting"
@@ -68,7 +77,7 @@ class ServerManager
                         proxies[id].stop()
                         delete proxies[id]
                         storeConfig()
-                        response.end "delete "+request.params.id
+                        response.end "delete " + request.params.id
 
             ).listen(7999)
 

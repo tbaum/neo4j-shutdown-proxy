@@ -4,9 +4,9 @@ iptables = require "./iptables.coffee"
 exec_org = require('child_process').exec
 
 exec = (log, cmd, callback) ->
-    log "exec:"+cmd
+    log "exec:" + cmd
     exec_org cmd, (exit, out, err)->
-        if (exit) then log "exit-code: "+exit
+        if (exit) then log "exit-code: " + exit
         if (out)  then log " > " + line for line in out.split "\n"
         if (err)  then log "E> " + line for line in err.split "\n"
         if (callback) then callback exit, out, err
@@ -31,39 +31,20 @@ class Neo4JServer
                 log "add firewall rule"
                 iptRule.addRule()
 
-        updateStatus = @updateStatus = ( callback )->
+        updateStatus = @updateStatus = (callback)->
             if callback is undefined
                 callback = (isRunning) -> setRunning isRunning if running != isRunning
 
             log "check status"
-            request = http.request
-                port: config.port, method: 'GET', path: '/admin/statistic/', host: '127.0.0.1'
-                headers:
-                    Host:'localhost', Accept:"application/json"
-                    Authorization: 'Basic ' + new Buffer(config.adminCredentials).toString('base64')
-                (response)->
-                    now = new Date().getTime() / 1000
-                    response.setEncoding 'utf8'
-                    data = ""
-                    response.on 'data', (chunk) -> data += chunk
-                    response.on 'end', ->
-                        callback true
-                        requestCount = 0
-                        duration = 0
-                        try 
-                         for sample in JSON.parse(data)
-                            if (sample.timeStamp > (now - 86400))
-                                requestCount += sample.requests
-                                duration += sample.period
-                        catch e 
-                          console.log e
-
-                        userRequests = requestCount - 10 - Math.round duration / 30
-
-                        log "requests: " + requestCount + " in " + duration + "s --> " + userRequests
-                        if userRequests <= 0  && duration > 82800  ## 23 hours
-                            log "will shutdown"
-                            stopServer()
+            auth = 'Basic ' + new Buffer(config.adminCredentials).toString('base64')
+            headers = Host: 'localhost', Accept: "application/json", Authorization: auth
+            params = port: config.port, method: 'GET', path: '/', host: '127.0.0.1', headers: headers
+            request = http.request params, (response)->
+                now = new Date().getTime() / 1000
+                response.setEncoding 'utf8'
+                data = ""
+                response.on 'data', (chunk) -> data += chunk
+                response.on 'end', -> callback true
 
             request.on 'error', (e) -> callback false
             request.end "\n"
@@ -77,8 +58,8 @@ class Neo4JServer
             exec log, config.startCmd, (error, stdout, stderr) ->
                 if error && !config.failedMail
                     config.failedMail = 1
-                    subject = '[ERR-heroku] keeper coud not start '+config.startCmd+' on `hostname -f`'
-                    exec log, '( date ; echo \''+stdout+'\' ; echo "'+config.port+' -----" ; tail -n30 /mnt/'+config.instance+'/data/log/console.log ) | mail heroku@neo4j.org -a "From: root@'+serverName+'" -s "'+subject+'"'
+                    subject = '[ERR-heroku] keeper coud not start ' + config.startCmd + ' on `hostname -f`'
+                    exec log, '( date ; echo \'' + stdout + '\' ; echo "' + config.port + ' -----" ; tail -n30 /mnt/' + config.instance + '/data/log/console.log ) | mail heroku@neo4j.org -a "From: root@' + serverName + '" -s "' + subject + '"'
                 updateStatus (isRunning) ->
                     config.failedMail = 0 if isRunning
                     startingOrStopping = false
@@ -90,8 +71,8 @@ class Neo4JServer
             startingOrStopping = true
             log "stopping"
             exec log, config.stopCmd, ->
-               startingOrStopping = false
-               setRunning false
+                startingOrStopping = false
+                setRunning false
 
         waitForServer = @waitForServer = (msg, callback) ->
             return callback() if running
@@ -100,4 +81,4 @@ class Neo4JServer
             setTimeout waitForServer, 2000, msg, callback
 
 
-exports.create = (config,serverName) -> new Neo4JServer(config,serverName)
+exports.create = (config, serverName) -> new Neo4JServer(config, serverName)
