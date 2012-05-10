@@ -1,0 +1,19 @@
+{
+    "name":"neo4-shutdown-proxy",
+    "description":"management of neo4j-instances",
+    "keywords":[ "neo4j" ],
+    "version":"0.0.1",
+    "author":"Thomas Baum <thomas.baum@atns.de>",
+    "main":"./application.coffee",
+    "repository":{
+        "type":"git",
+        "url":"git://github.com/tbaum/neo4j-shutdown-proxy.git"
+    },
+    "engines":{
+        "node":">= 0.6.1"
+    },
+    "dependencies":{
+        "connect":"2.1.0",
+        "coffee-script":"1.2.0"
+    }
+}

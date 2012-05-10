@@ -20,7 +20,6 @@ class Neo4JServer
         config = @config
         serverName = @serverName
         log = config.logger
-
         @running = -> running
 
         @setRunning = setRunning = (r) ->
