@@ -35,15 +35,12 @@ class Neo4JServer
             if callback is undefined
                 callback = (isRunning) -> setRunning isRunning if running != isRunning
 
-            log "check status"
             auth = 'Basic ' + new Buffer(config.adminCredentials).toString('base64')
             headers = Host: 'localhost', Accept: "application/json", Authorization: auth
             params = port: config.port, method: 'GET', path: '/', host: '127.0.0.1', headers: headers
             request = http.request params, (response)->
-                now = new Date().getTime() / 1000
                 response.setEncoding 'utf8'
-                data = ""
-                response.on 'data', (chunk) -> data += chunk
+                response.on 'data', (chunk) ->
                 response.on 'end', -> callback true
 
             request.on 'error', (e) -> callback false
