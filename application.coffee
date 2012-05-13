@@ -48,21 +48,21 @@ class ServerManager
                         console.log "status"
                         res = {}
                         res[instance] = proxy.running() for instance, proxy of proxies
-                        response.end JSON.stringify(res)
+                        response.end JSON.stringify(res) + "\n"
 
                     app.get '/start/:id', (request, response) ->
                         id = request.params.id
                         console.log "starting " + id
                         if (!proxies[id]) then throw new Error "instance " + id + " is not registered"
                         proxies[id].startServer()
-                        response.end "stop " + request.params.id
+                        response.end "start " + request.params.id + "\n"
 
                     app.get '/stop/:id', (request, response) ->
                         id = request.params.id
                         console.log "stopping " + id
                         if (!proxies[id]) then throw new Error "instance " + id + " is not registered"
                         proxies[id].stopServer()
-                        response.end "stop " + request.params.id
+                        response.end "stop " + request.params.id + "\n"
 
                     app.post '/:id', (request, response) ->
                         id = request.params.id
@@ -70,7 +70,7 @@ class ServerManager
                         if (proxies[id]) then throw new Error "instance " + id + " is already registered"
                         bringUp id
                         storeConfig()
-                        response.end "add " + request.params.id
+                        response.end "add " + request.params.id + "\n"
 
                     app.delete '/:id', (request, response) ->
                         id = request.params.id
@@ -79,7 +79,7 @@ class ServerManager
                         proxies[id].stop()
                         delete proxies[id]
                         storeConfig()
-                        response.end "delete " + request.params.id
+                        response.end "delete " + request.params.id + "\n"
 
             ).listen(7999)
 
