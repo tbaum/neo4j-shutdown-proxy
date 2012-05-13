@@ -54,15 +54,15 @@ class ServerManager
                         id = request.params.id
                         console.log "starting " + id
                         if (!proxies[id]) then throw new Error "instance " + id + " is not registered"
-                        proxies[id].startServer ->
-                            response.end "start " + request.params.id + "\n"
+                        proxies[id].startServer (msg) ->
+                            response.end request.params.id + " " + msg + "\n"
 
                     app.get '/stop/:id', (request, response) ->
                         id = request.params.id
                         console.log "stopping " + id
                         if (!proxies[id]) then throw new Error "instance " + id + " is not registered"
-                        proxies[id].stopServer ->
-                            response.end "stop " + request.params.id + "\n"
+                        proxies[id].stopServer (msg) ->
+                            response.end request.params.id + " " + msg + "\n"
 
                     app.post '/:id', (request, response) ->
                         id = request.params.id
