@@ -105,10 +105,10 @@ class Neo4JServer
                 log "try to stop server: is allready starting/stopping"
                 return
 
-            unless running
-                callback "not running" if callback
-                log "try to stop server: not running"
-                return
+            #unless running
+            #    callback "not running" if callback
+            #    log "try to stop server: not running"
+            #    return
 
             startingOrStopping = true
             log "stopping"
