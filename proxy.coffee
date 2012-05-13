@@ -30,11 +30,11 @@ class Proxy
             neo4j.stopServer()
             server.close()
 
-        @startServer = ->
-            neo4j.startServer()
+        @startServer = (callback)->
+            neo4j.startServer(callback)
 
-        @stopServer = ->
-            neo4j.stopServer()
+        @stopServer = (callback)->
+            neo4j.stopServer(callback)
 
 
 exports.buildFor = (neo4j, config) -> new Proxy neo4j, config
