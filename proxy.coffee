@@ -1,4 +1,3 @@
-
 net = require 'net'
 
 class Proxy
@@ -30,5 +29,12 @@ class Proxy
             clearInterval updater
             neo4j.stopServer()
             server.close()
+
+        @startServer = ->
+            neo4j.startServer()
+
+        @stopServer = ->
+            neo4j.stopServer()
+
 
 exports.buildFor = (neo4j, config) -> new Proxy neo4j, config
