@@ -14,6 +14,7 @@
     },
     "dependencies":{
         "connect":"1.8.5",
+        "mail":"0.2.3",
         "coffee-script":"1.2.0"
     }
 }

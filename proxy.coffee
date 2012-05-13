@@ -20,7 +20,7 @@ class Proxy
         log "start " + config.proxyPort + " -> " + config.port
         list = server.listen config.proxyPort
 
-        updater = setInterval neo4j.updateStatus, 30000
+        updater = setInterval neo4j.updateStatus, 5000
         neo4j.updateStatus (isRunning) -> neo4j.setRunning isRunning
 
         @running = -> neo4j.running()

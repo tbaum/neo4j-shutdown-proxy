@@ -1,4 +1,9 @@
-http = require "http"
+net = require "net"
+mail = require('mail').Mail(host: 'localhost')
+
+email_sender = 'hosted@neotechnology.com'
+email_recipients = ['cloud@neotechnology.zendesk.com']
+
 iptables = require "./iptables.coffee"
 
 exec_org = require('child_process').exec
@@ -11,12 +16,12 @@ exec = (log, cmd, callback) ->
         if (err)  then log "E> " + line for line in err.split "\n"
         if (callback) then callback exit, out, err
 
-
 class Neo4JServer
     constructor: (@config, @serverName) ->
         iptRule = iptables.redirectRule config.port, config.proxyPort
         running = false
         startingOrStopping = false
+        inError = false
         config = @config
         serverName = @serverName
         log = config.logger
@@ -31,25 +36,50 @@ class Neo4JServer
                 log "add firewall rule"
                 iptRule.addRule()
 
+        sendErrorMessage = (info) ->
+            message = mail.message
+                from: email_sender
+                to: email_recipients
+                subject: serverName + ' keeper coud not start ' + config.instance
+            message.body info
+            message.send (err)-> throw err if (err)
+
+        sendRecoverMessage =  ->
+            message = mail.message
+                from: email_sender
+                to: email_recipients
+                subject: serverName + ' keeper coud not start ' + config.instance
+            message.body "== RECOVERED =="
+            message.send (err)-> throw err if (err)
+
         updateStatus = @updateStatus = (callback)->
             if callback is undefined
                 callback = (isRunning) -> setRunning isRunning if running != isRunning
 
-            auth = 'Basic ' + new Buffer(config.adminCredentials).toString('base64')
-            headers = Host: 'localhost', Accept: "application/json", Authorization: auth
-            params = port: config.port, method: 'GET', path: '/', host: '127.0.0.1', headers: headers
-            request = http.request params, (response)->
-                response.setEncoding 'utf8'
-                response.on 'data', (chunk) ->
-                response.on 'end', -> callback true
+            isOpen = false
+            conn = net.createConnection(config.port, "localhost")
+            timeoutId = setTimeout (()-> onClose()), 400
+            onClose = ->
+                clearTimeout timeoutId
+                delete conn
+                if isOpen && inError
+                    sendRecoverMessage()
+                    inError = false
+                callback isOpen
 
-            request.on 'error', (e) -> callback false
-            request.end "\n"
+            conn.on "close", onClose
+            conn.on "error", -> conn.end()
+            conn.on "connect", -> isOpen = true && conn.end()
 
         startServer = @startServer = (callback) ->
             if startingOrStopping
                 callback "is allready starting/stopping" if callback
                 log "try to start server: is allready starting/stopping"
+                return
+
+            if inError
+                callback "in error state" if callback
+                log "try to start server: in error state"
                 return
 
             if running
@@ -60,12 +90,11 @@ class Neo4JServer
             startingOrStopping = true
             log "starting"
             exec log, config.startCmd, (error, stdout, stderr) ->
-                if error && !config.failedMail
-                    config.failedMail = 1
-                    subject = '[ERR-heroku] keeper coud not start ' + config.startCmd + ' on `hostname -f`'
-                    exec log, '( date ; echo \'' + stdout + '\' ; echo "' + config.port + ' -----" ; tail -n30 /mnt/' + config.instance + '/data/log/console.log ) | mail heroku@neo4j.org -a "From: root@' + serverName + '" -s "' + subject + '"'
+                if error
+                    sendErrorMessage stdout + '\n\n' + stderr
+                    inError = true
+
                 updateStatus (isRunning) ->
-                    config.failedMail = 0 if isRunning
                     startingOrStopping = false
                     setRunning isRunning
                     callback "start " + isRunning if callback
@@ -90,7 +119,7 @@ class Neo4JServer
 
         waitForServer = @waitForServer = (msg, callback) ->
             return callback() if running
-            log "waitForServer " + msg
+            # log "waitForServer " + msg
             startServer() unless startingOrStopping
             setTimeout waitForServer, 2000, msg, callback
 
