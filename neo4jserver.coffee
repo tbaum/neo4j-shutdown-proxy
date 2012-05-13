@@ -46,9 +46,16 @@ class Neo4JServer
             request.on 'error', (e) -> callback false
             request.end "\n"
 
-        startServer = @startServer = ->
-            return log "try to start server: is allready starting/stopping" if startingOrStopping
-            return log "try to start server: is running" if running
+        startServer = @startServer = (callback) ->
+            if startingOrStopping
+                callback "is allready starting/stopping" if callback
+                log "try to start server: is allready starting/stopping"
+                return
+
+            if running
+                callback "is running" if callback
+                log "try to start server: is running"
+                return
 
             startingOrStopping = true
             log "starting"
@@ -61,15 +68,25 @@ class Neo4JServer
                     config.failedMail = 0 if isRunning
                     startingOrStopping = false
                     setRunning isRunning
+                    callback "start " + isRunning if callback
 
-        stopServer = @stopServer = ->
-            return log "try to stop server: is allready starting/stopping" if startingOrStopping
-            return log "try to stop server: not running" unless running
+        stopServer = @stopServer = (callback) ->
+            if startingOrStopping
+                callback "is allready starting/stopping" if callback
+                log "try to stop server: is allready starting/stopping"
+                return
+
+            unless running
+                callback "not running" if callback
+                log "try to stop server: not running"
+                return
+
             startingOrStopping = true
             log "stopping"
             exec log, config.stopCmd, ->
                 startingOrStopping = false
                 setRunning false
+                callback "stopped" if callback
 
         waitForServer = @waitForServer = (msg, callback) ->
             return callback() if running
