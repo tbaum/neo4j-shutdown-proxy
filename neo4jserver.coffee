@@ -40,7 +40,7 @@ class Neo4JServer
             message = mail.message
                 from: email_sender
                 to: email_recipients
-                subject: serverName + ' keeper coud not start ' + config.instance
+                subject: serverName + ' ' + config.instance + ' could not start database'
             message.body info
             message.send (err)-> throw err if (err)
 
@@ -48,7 +48,7 @@ class Neo4JServer
             message = mail.message
                 from: email_sender
                 to: email_recipients
-                subject: serverName + ' keeper coud not start ' + config.instance
+                subject: serverName + ' ' + config.instance + ' could not start database'
             message.body "== RECOVERED =="
             message.send (err)-> throw err if (err)
 
